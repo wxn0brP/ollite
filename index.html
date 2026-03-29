@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollite - Ollama web ui</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: monospace;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        main {
+            flex: 1;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            padding-bottom: 1rem;
+        }
+
+        main div {
+            padding: 1rem;
+            border-bottom: 1px solid #333;
+            width: 100%;
+            word-wrap: break-word;
+            display: flex;
+        }
+
+        main p {
+            flex: 1;
+        }
+
+        main article {
+            display: flex;
+            gap: 5px;
+            width: 100px;
+        }
+
+        main button {
+            padding: 5px;
+            cursor: pointer;
+            background-color: #010101;
+            color: #fff;
+            border-radius: 5px;
+            width: 2rem;
+            height: 2rem;
+        }
+
+        section {
+            display: flex;
+            padding: 1rem;
+            align-items: center;
+            height: 110px;
+            gap: 5px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 1rem;
+            flex: 1;
+            background-color: #010101;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+
+        section button {
+            padding: 1rem;
+            cursor: pointer;
+            background-color: #010101;
+            color: #fff;
+            width: 100px;
+            height: 60px;
+        }
+
+        select {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1rem;
+            background-color: #010101;
+            color: #fff;
+        }
+
+        @media screen and (max-width: 768px) {
+            section button {
+                width: 50px;
+                height: 80px;
+                writing-mode: vertical-rl;
+            }
+
+            main .bot article {
+                width: 3rem;
+                flex-direction: column;
+                align-items: end;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main></main>
+    <section>
+        <textarea id="prompt"></textarea>
+        <button id="submit">Submit</button>
+    </section>
+
+    <script type="module">
+        const queryParams = new URLSearchParams(window.location.search);
+        const apiHost = queryParams.get("apiHost") || "http://localhost:11434";
+        let model = queryParams.get("model");
+        const main = document.querySelector("main");
+        const prompt = document.querySelector("#prompt");
+        const submit = document.querySelector("#submit");
+        const configs = JSON.parse(localStorage.getItem("config") || "{}");
+
+        if (queryParams.get("history")) {
+            const history = queryParams.get("history").split("|||");
+            history.forEach((text, i) => createMessage(text, i % 2 === 0));
+            main.scrollTop = main.scrollHeight;
+        }
+
+        let blockQuery = false;
+        let copyTimeout = 0;
+        let promptTemp = "";
+        let targetEdit = null;
+
+        if (!model) {
+            const response = await fetch(`${apiHost}/api/tags`);
+            const data = await response.json();
+            const select = document.createElement("select");
+
+            select.innerHTML = "<option value=\"\">Select a model</option>";
+            select.innerHTML += data.models
+                .map(model => `<option value="${model.name}">${model.model}</option>`)
+                .join("");
+
+            select.addEventListener("change", (e) => {
+                model = e.target.value;
+                if (!model) return;
+                select.remove();
+                queryParams.set("model", model);
+                window.history.pushState({}, "", `?${queryParams.toString()}`);
+            });
+
+            main.appendChild(select);
+        }
+
+        function createMessage(text = "", isUser = false) {
+            const div = document.createElement("div");
+            main.appendChild(div);
+            if (isUser) div.classList.add("user");
+            else div.classList.add("bot");
+
+            const p = document.createElement("p");
+            p.innerText = text;
+            div.appendChild(p);
+
+            const article = document.createElement("article");
+            div.appendChild(article);
+
+            const copy = document.createElement("button");
+            copy.innerText = "C";
+            copy.classList.add("copy");
+            article.appendChild(copy);
+
+            const del = document.createElement("button");
+            del.innerText = "D";
+            del.classList.add("delete");
+            article.appendChild(del);
+
+            const edit = document.createElement("button");
+            edit.innerText = "E";
+            edit.classList.add("edit");
+            article.appendChild(edit);
+
+            return div;
+        }
+
+        async function query() {
+            if (blockQuery) {
+                const text = prompt.value.trim();
+                if (!text) return;
+                targetEdit.querySelector("p").innerText = text;
+                prompt.value = promptTemp;
+                setHistory();
+                blockQuery = false;
+                targetEdit.querySelector(".edit").innerText = "E!";
+                setTimeout(() => {
+                    targetEdit.querySelector(".edit").innerText = "E";
+                }, 1000);
+                return;
+            }
+
+            const promptText = prompt.value;
+            prompt.value = "";
+
+            createMessage(promptText, true);
+            const div = createMessage("", false);
+            const p = div.querySelector("p");
+
+            const messages = extractHistory().map((text, i) => ({
+                role: i % 2 === 0 ? "user" : "assistant",
+                content: text
+            }));
+
+            const response = await fetch(`${apiHost}/api/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    ...configs,
+                    model,
+                    messages,
+                    stream: true
+                }),
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+
+                for (let i = 0; i < lines.length - 1; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        const data = JSON.parse(line);
+                        if (data.message && data.message.content) {
+                            p.innerText += data.message.content;
+                        }
+                    }
+                }
+                buffer = lines[lines.length - 1];
+            }
+
+            if (buffer.trim()) {
+                const data = JSON.parse(buffer);
+                if (data.message && data.message.content) {
+                    p.innerText += data.message.content;
+                }
+            }
+
+            setHistory();
+            main.scrollTop = main.scrollHeight;
+        }
+
+        function extractHistory() {
+            return Array.from(main.querySelectorAll("div"))
+                .map(div => div.querySelector("p").innerText)
+                .filter(text => text.trim());
+        }
+
+        function setHistory() {
+            const history = extractHistory();
+            queryParams.set("history", history.join("|||"));
+            window.history.pushState({}, "", `?${queryParams.toString()}`);
+        }
+
+        submit.addEventListener("click", query);
+        prompt.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                query();
+            }
+        });
+
+        main.addEventListener("dblclick", (e) => {
+            if (e.target.tagName === "DIV" || e.target.tagName === "P") {
+                if (Date.now() - copyTimeout < 5000) return;
+                copyTimeout = Date.now();
+
+                const text = e.target.querySelector("p").innerText;
+                navigator.clipboard.writeText(text);
+                e.target.querySelector(".copy").innerText = "C!";
+                setTimeout(() => {
+                    e.target.querySelector(".copy").innerText = "C";
+                }, 1000);
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            const target = e.target;
+            const tClass = target.classList;
+            const div = target.closest("div");
+
+            if (tClass.contains("copy")) {
+                const text = div.querySelector("p").innerText;
+                navigator.clipboard.writeText(text);
+                target.innerText = "C!";
+                setTimeout(() => {
+                    target.innerText = "C";
+                }, 1000);
+            }
+
+            if (tClass.contains("delete")) {
+                if (!confirm("Delete message?")) return;
+                div.remove();
+                setHistory();
+            }
+
+            if (tClass.contains("edit")) {
+                promptTemp = prompt.value;
+                prompt.value = div.querySelector("p").innerText;
+                targetEdit = div;
+                blockQuery = true;
+            }
+        });
+    </script>
+</body>
+
+</html>
