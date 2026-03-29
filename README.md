@@ -23,7 +23,7 @@ A minimalist, single-file web interface for Ollama.
 ### Configuration
 
 You can pass configuration via URL query parameters:
-- `apiHost`: The Ollama API host (default `http://localhost:11434`).
+- `apiHost`: The Ollama API host (default `${location.protocol}://${location.hostname}:11434`).
 - `model`: The model name to use.
 - `history`: The conversation history. (use ||| to separate messages)
 - `config`: JSON string of the config. (default `{}`, apply to fetch body)

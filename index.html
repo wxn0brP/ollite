@@ -121,12 +121,15 @@
 
     <script type="module">
         const queryParams = new URLSearchParams(window.location.search);
-        const apiHost = queryParams.get("apiHost") || "http://localhost:11434";
+        let apiHost = queryParams.get("apiHost");
         let model = queryParams.get("model");
         const main = document.querySelector("main");
         const prompt = document.querySelector("#prompt");
         const submit = document.querySelector("#submit");
         const configs = JSON.parse(localStorage.getItem("config") || "{}");
+
+        if (!apiHost)
+            apiHost = location.protocol + "//" + location.hostname + ":11434";
 
         if (queryParams.get("history")) {
             const history = queryParams.get("history").split("|||");
