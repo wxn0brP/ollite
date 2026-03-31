@@ -255,6 +255,9 @@
                     }
                 }
                 buffer = lines[lines.length - 1];
+
+                if (main.scrollHeight - main.scrollTop - main.clientHeight < 30)
+                    main.scrollTop = main.scrollHeight;
             }
 
             if (buffer.trim()) {
