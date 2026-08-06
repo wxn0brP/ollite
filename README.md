@@ -17,7 +17,9 @@ A minimalist, single-file web interface for Ollama.
 ## Getting Started
 
 1. Make sure [Ollama](https://ollama.com/) is running and accessible (default: `http://localhost:11434`).
-2. Open `index.html` in any modern web browser.
+2. Download
+[index.html](https://raw.githubusercontent.com/wxn0brP/ollite/refs/heads/gh-pages/index.html)
+and open it.
 3. Select your model and start chatting.
 
 ### Configuration
