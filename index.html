@@ -117,8 +117,193 @@ select {
         <button id="submit">Submit</button>
     </section>
 
-    <script>var n=document.querySelector("main"),l=document.querySelector("#prompt"),H=document.querySelector("#submit"),S=JSON.parse(localStorage.getItem("config")||"{}"),a=new URLSearchParams(window.location.search),t={apiHost:a.get("apiHost"),model:a.get("model"),blockQuery:!1,promptTemp:"",targetEdit:null};function u(o="",r=!1){let e=document.createElement("div");n.appendChild(e),r?e.classList.add("user"):e.classList.add("bot");let i=document.createElement("p");i.innerText=o,e.appendChild(i);let m=document.createElement("article");e.appendChild(m);let p=document.createElement("button");p.innerText="C",p.classList.add("copy"),m.appendChild(p);let d=document.createElement("button");d.innerText="D",d.classList.add("delete"),m.appendChild(d);let c=document.createElement("button");return c.innerText="E",c.classList.add("edit"),m.appendChild(c),e}function x(){return Array.from(n.querySelectorAll("div")).map(o=>o.querySelector("p").innerText).filter(o=>o.trim())}function f(){let o=x();a.set("history",o.join("|||")),window.history.pushState({},"",`?${a.toString()}`)}async function v(){if(t.blockQuery){let s=l.value.trim();if(!s)return;t.targetEdit.querySelector("p").innerText=s,l.value=t.promptTemp,f(),t.blockQuery=!1,t.targetEdit.querySelector(".edit").innerText="E!",setTimeout(()=>{t.targetEdit.querySelector(".edit").innerText="E"},1e3);return}let o=l.value;l.value="",u(o,!0);let e=u("",!1).querySelector("p"),i=x().map((s,g)=>({role:g%2===0?"user":"assistant",content:s})),p=(await fetch(`${t.apiHost}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...S,model:t.model,messages:i,stream:!0})})).body.getReader(),d=new TextDecoder("utf-8"),c="";for(;;){let{done:s,value:g}=await p.read();if(s)break;c+=d.decode(g,{stream:!0});let y=c.split(`
-`);for(let T=0;T<y.length-1;T++){let E=y[T].trim();if(E){let h=JSON.parse(E);h.message&&h.message.content&&(e.innerText+=h.message.content)}}c=y[y.length-1],n.scrollHeight-n.scrollTop-n.clientHeight<30&&(n.scrollTop=n.scrollHeight)}if(c.trim()){let s=JSON.parse(c);s.message&&s.message.content&&(e.innerText+=s.message.content)}f(),n.scrollTop=n.scrollHeight}t.apiHost||(t.apiHost=location.protocol+"//"+location.hostname+":11434");a.get("history")&&(a.get("history").split("|||").forEach((r,e)=>u(r,e%2===0)),n.scrollTop=n.scrollHeight);var L=0;if(!t.model){let r=await(await fetch(`${t.apiHost}/api/tags`)).json(),e=document.createElement("select");e.innerHTML='<option value="">Select a model</option>',e.innerHTML+=r.models.map(i=>`<option value="${i.name}">${i.model}</option>`).join(""),e.addEventListener("change",i=>{t.model=i.target.value,t.model&&(e.remove(),a.set("model",t.model),window.history.pushState({},"",`?${a.toString()}`))}),n.appendChild(e)}H.addEventListener("click",v);l.addEventListener("keydown",o=>{o.key==="Enter"&&o.shiftKey&&(o.preventDefault(),v())});n.addEventListener("dblclick",o=>{let r=o.target;if(r.tagName==="DIV"||r.tagName==="P"){if(Date.now()-L<5e3)return;L=Date.now();let e=r.querySelector("p").innerText;navigator.clipboard.writeText(e),r.querySelector(".copy").innerText="C!",setTimeout(()=>{r.querySelector(".copy").innerText="C"},1e3)}});document.addEventListener("click",o=>{let r=o.target,e=r.classList,i=r.closest("div");if(e.contains("copy")){let m=i.querySelector("p").innerText;navigator.clipboard.writeText(m),r.innerText="C!",setTimeout(()=>{r.innerText="C"},1e3)}if(e.contains("delete")){if(!confirm("Delete message?"))return;i.remove(),f()}e.contains("edit")&&(t.promptTemp=l.value,l.value=i.querySelector("p").innerText,t.targetEdit=i,t.blockQuery=!0)});
+    <script>// src/var.ts
+var main = document.querySelector("main");
+var prompt = document.querySelector("#prompt");
+var submit = document.querySelector("#submit");
+var configs = JSON.parse(localStorage.getItem("config") || "{}");
+var queryParams = new URLSearchParams(window.location.search);
+var state = {
+  apiHost: queryParams.get("apiHost"),
+  model: queryParams.get("model"),
+  blockQuery: false,
+  promptTemp: "",
+  targetEdit: null
+};
+
+// src/create.ts
+function createMessage(text = "", isUser = false) {
+  const div = document.createElement("div");
+  main.appendChild(div);
+  if (isUser) div.classList.add("user");
+  else div.classList.add("bot");
+  const p = document.createElement("p");
+  p.innerText = text;
+  div.appendChild(p);
+  const article = document.createElement("article");
+  div.appendChild(article);
+  const copy = document.createElement("button");
+  copy.innerText = "C";
+  copy.classList.add("copy");
+  article.appendChild(copy);
+  const del = document.createElement("button");
+  del.innerText = "D";
+  del.classList.add("delete");
+  article.appendChild(del);
+  const edit = document.createElement("button");
+  edit.innerText = "E";
+  edit.classList.add("edit");
+  article.appendChild(edit);
+  return div;
+}
+
+// src/utils.ts
+function extractHistory() {
+  return Array.from(main.querySelectorAll("div")).map((div) => div.querySelector("p").innerText).filter((text) => text.trim());
+}
+function setHistory() {
+  const history = extractHistory();
+  queryParams.set("history", history.join("|||"));
+  window.history.pushState({}, "", `?${queryParams.toString()}`);
+}
+
+// src/query.ts
+async function query() {
+  if (state.blockQuery) {
+    const text = prompt.value.trim();
+    if (!text) return;
+    state.targetEdit.querySelector("p").innerText = text;
+    prompt.value = state.promptTemp;
+    setHistory();
+    state.blockQuery = false;
+    state.targetEdit.querySelector(".edit").innerText = "E!";
+    setTimeout(() => {
+      state.targetEdit.querySelector(".edit").innerText = "E";
+    }, 1e3);
+    return;
+  }
+  const promptText = prompt.value;
+  prompt.value = "";
+  createMessage(promptText, true);
+  const div = createMessage("", false);
+  const p = div.querySelector("p");
+  const messages = extractHistory().map((text, i) => ({
+    role: i % 2 === 0 ? "user" : "assistant",
+    content: text
+  }));
+  const response = await fetch(`${state.apiHost}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      ...configs,
+      model: state.model,
+      messages,
+      stream: true
+    })
+  });
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, {
+      stream: true
+    });
+    const lines = buffer.split("\n");
+    for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (line) {
+        const data = JSON.parse(line);
+        if (data.message && data.message.content) {
+          p.innerText += data.message.content;
+        }
+      }
+    }
+    buffer = lines[lines.length - 1];
+    if (main.scrollHeight - main.scrollTop - main.clientHeight < 30)
+      main.scrollTop = main.scrollHeight;
+  }
+  if (buffer.trim()) {
+    const data = JSON.parse(buffer);
+    if (data.message && data.message.content) {
+      p.innerText += data.message.content;
+    }
+  }
+  setHistory();
+  main.scrollTop = main.scrollHeight;
+}
+
+// src/index.ts
+if (!state.apiHost)
+  state.apiHost = location.protocol + "//" + location.hostname + ":11434";
+if (queryParams.get("history")) {
+  const history = queryParams.get("history").split("|||");
+  history.forEach((text, i) => createMessage(text, i % 2 === 0));
+  main.scrollTop = main.scrollHeight;
+}
+var copyTimeout = 0;
+if (!state.model) {
+  const response = await fetch(`${state.apiHost}/api/tags`);
+  const data = await response.json();
+  const select = document.createElement("select");
+  select.innerHTML = '<option value="">Select a model</option>';
+  select.innerHTML += data.models.map((model) => `<option value="${model.name}">${model.model}</option>`).join("");
+  select.addEventListener("change", (e) => {
+    state.model = e.target.value;
+    if (!state.model) return;
+    select.remove();
+    queryParams.set("model", state.model);
+    window.history.pushState({}, "", `?${queryParams.toString()}`);
+  });
+  main.appendChild(select);
+}
+submit.addEventListener("click", query);
+prompt.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.shiftKey) {
+    e.preventDefault();
+    query();
+  }
+});
+main.addEventListener("dblclick", (e) => {
+  const target = e.target;
+  if (target.tagName === "DIV" || target.tagName === "P") {
+    if (Date.now() - copyTimeout < 5e3) return;
+    copyTimeout = Date.now();
+    const text = target.querySelector("p").innerText;
+    navigator.clipboard.writeText(text);
+    target.querySelector(".copy").innerText = "C!";
+    setTimeout(() => {
+      target.querySelector(".copy").innerText = "C";
+    }, 1e3);
+  }
+});
+document.addEventListener("click", (e) => {
+  const target = e.target;
+  const tClass = target.classList;
+  const div = target.closest("div");
+  if (tClass.contains("copy")) {
+    const text = div.querySelector("p").innerText;
+    navigator.clipboard.writeText(text);
+    target.innerText = "C!";
+    setTimeout(() => {
+      target.innerText = "C";
+    }, 1e3);
+  }
+  if (tClass.contains("delete")) {
+    if (!confirm("Delete message?")) return;
+    div.remove();
+    setHistory();
+  }
+  if (tClass.contains("edit")) {
+    state.promptTemp = prompt.value;
+    prompt.value = div.querySelector("p").innerText;
+    state.targetEdit = div;
+    state.blockQuery = true;
+  }
+});
 //# sourceMappingURL=index.js.map
 </script>
 </body>
