@@ -1,0 +1,14 @@
+{
+    "dir": "dist",
+    "entryPoints": [
+        "src/index.ts"
+    ],
+    "html": [
+        "public/index.html"
+    ],
+    "htmlPath": "public:dist",
+    "assets": [
+        "public/style.css"
+    ],
+    "singleFile": true
+}

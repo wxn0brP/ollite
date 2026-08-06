@@ -1,0 +1,12 @@
+{
+    cmd: "tsc --noEmit && bun build src/index.ts --outdir=public",
+    watch: [
+        "src"
+    ],
+    server: 24456,
+    server_map: {
+        dir: {
+            "/": "public"
+        }
+    }
+}

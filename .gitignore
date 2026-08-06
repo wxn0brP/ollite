@@ -1,1 +1,11 @@
 .vscode
+
+node_modules
+dist
+public/index.js
+
+.suglite_history
+
+package-lock.json
+yarn.lock
+bun.lock

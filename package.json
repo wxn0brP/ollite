@@ -1,0 +1,13 @@
+{
+	"name": "@wxn0brp/ollite",
+	"author": "wxn0brP",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"build": "pressure"
+	},
+	"devDependencies": {
+		"@wxn0brp/biome": "*",
+		"typescript": "^7"
+	}
+}

@@ -1,0 +1,102 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: monospace;
+	background-color: #000;
+	color: #fff;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	width: 100vw;
+}
+
+main {
+	flex: 1;
+	overflow-y: auto;
+	scroll-behavior: smooth;
+	padding-bottom: 1rem;
+}
+
+main div {
+	padding: 1rem;
+	border-bottom: 1px solid #333;
+	width: 100%;
+	word-wrap: break-word;
+	display: flex;
+}
+
+main p {
+	flex: 1;
+}
+
+main article {
+	display: flex;
+	gap: 5px;
+	width: 100px;
+}
+
+main button {
+	padding: 5px;
+	cursor: pointer;
+	background-color: #010101;
+	color: #fff;
+	border-radius: 5px;
+	width: 2rem;
+	height: 2rem;
+}
+
+section {
+	display: flex;
+	padding: 1rem;
+	align-items: center;
+	height: 110px;
+	gap: 5px;
+}
+
+textarea {
+	width: 100%;
+	height: 100px;
+	margin-bottom: 1rem;
+	flex: 1;
+	background-color: #010101;
+	color: #fff;
+	border: 1px solid #333;
+	padding: 10px;
+}
+
+section button {
+	padding: 1rem;
+	cursor: pointer;
+	background-color: #010101;
+	color: #fff;
+	width: 100px;
+	height: 60px;
+}
+
+select {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 1rem;
+	background-color: #010101;
+	color: #fff;
+}
+
+@media screen and (max-width: 768px) {
+	section button {
+		width: 50px;
+		height: 80px;
+		writing-mode: vertical-rl;
+	}
+
+	main .bot article {
+		width: 3rem;
+		flex-direction: column;
+		align-items: end;
+	}
+}
