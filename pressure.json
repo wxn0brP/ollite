@@ -10,5 +10,6 @@
     "assets": [
         "public/style.css"
     ],
-    "singleFile": true
+    "singleFile": true,
+    "minify": false
 }
